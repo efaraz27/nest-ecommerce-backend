@@ -9,10 +9,10 @@ amqp.connect("amqp://localhost:5672", function (error0, connection) {
       throw error1;
     }
     const newProduct = {
-      name: "Product 1",
-      price: 100,
-      description: "This is a product",
-      image: "https://picsum.photos/200/300",
+      name: "Product 2",
+      price: 120,
+      description: "This is a product2",
+      image: "https://picsum.photos/200/400",
       category: "Electronics",
     };
     var correlationId = generateUuid();
@@ -24,6 +24,7 @@ amqp.connect("amqp://localhost:5672", function (error0, connection) {
       function (msg) {
         if (msg.properties.correlationId == correlationId) {
           console.log(" [.] Got %s", msg.content.toString());
+          console.log(JSON.parse(msg.content.toString()));
           setTimeout(function () {
             connection.close();
             process.exit(0);

@@ -1,9 +1,7 @@
 import express, { Application, Request, Response } from "express";
-import dotenv from "dotenv";
 import { connect } from "mongoose";
 import endpointsConfig from "./endpoints.config";
-import amqp, { Message } from "amqplib/callback_api";
-import Product from "./models/Product";
+import amqp from "amqplib/callback_api";
 import ProductRouter from "./routes/Product";
 import {
   consumeGetAllProducts,
@@ -11,11 +9,23 @@ import {
   consumeGetProduct,
 } from "./rabbitmq";
 
-amqp.connect(endpointsConfig.RabbitMQ, (err, conn) => {
+// Connecting to RabbitMQ
+amqp.connect(endpointsConfig.RabbitMQ, async (err, conn) => {
   if (err) {
+    // throw error if connection failed
     console.error("Error connecting to RabbitMQ: ", err);
     return;
   }
+  const mongoURI: string = endpointsConfig.MongoURI;
+  try {
+    // Connecting to MongoDB
+    await connect(mongoURI);
+  } catch (err) {
+    // throw error if connection failed
+    console.error("Error connecting to MongoDB: ", err);
+    return;
+  }
+  // Creaing a channel and declaring queues
   conn.createChannel((err, channel) => {
     if (err) {
       console.error("Error creating RabbitMQ channel: ", err);
@@ -28,22 +38,14 @@ amqp.connect(endpointsConfig.RabbitMQ, (err, conn) => {
     // channel.assertQueue("update_product", { durable: false });
     // channel.assertQueue("delete_product", { durable: false });
 
+    // Consuming queues
     consumeGetAllProducts(channel);
     consumeGetProduct(channel);
     consumeCreateProduct(channel);
 
+
+    // initialize express
     const app: Application = express();
-    dotenv.config();
-
-    const mongoURI: string = endpointsConfig.MongoURI;
-
-    connect(mongoURI)
-      .then(() => {
-        console.log("Connected to MongoDB");
-      })
-      .catch((err) => {
-        console.log("Error connecting to MongoDB: ", err);
-      });
 
     app.get("/", (req: Request, res: Response) => {
       res.send("Hello World!");
@@ -52,7 +54,7 @@ amqp.connect(endpointsConfig.RabbitMQ, (err, conn) => {
     app.use("/products", new ProductRouter().getRouter());
 
     app.listen(5000, () => {
-      console.log("Product service listening on port 5000!");
+      console.log("Product service listening on port 5000");
     });
   });
 });

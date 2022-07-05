@@ -45,11 +45,12 @@ export const consumeGetProduct = async (channel: Channel) => {
 };
 
 export const consumeCreateProduct = async (channel: Channel) => {
-  channel.consume("create_product", (msg) => {
+  channel.consume("create_product", async (msg) => {
     if (msg) {
       const product = JSON.parse(msg.content.toString());
       const newProduct = new Product(product);
-      newProduct.save().then(() => {
+      try {
+        await newProduct.save();
         channel.sendToQueue(
           msg.properties.replyTo,
           Buffer.from(JSON.stringify(newProduct)),
@@ -58,7 +59,10 @@ export const consumeCreateProduct = async (channel: Channel) => {
           }
         );
         channel.ack(msg);
-      });
+      } catch (err) {
+        console.error("Error creating product: ", err);
+        return;
+      }
     }
   });
 };

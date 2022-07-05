@@ -1,26 +1,37 @@
 version: '3.8'
 services:
-  rabbitmq3:
-    container_name: "rabbitmq"
-    image: rabbitmq:3-management
+  backend:
+    container_name: service
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "5001:5000"
+    volumes:
+      - ./db-data:/data/db
     environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
+      MONGODB_URI: mongodb://root:root@mongodb:27017/
+      RABBITMQ_URI: amqp://guest:guest@host.docker.internal:5672/
+    depends_on:
+      - mongodb
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - host.docker.internal:host-gateway
   mongodb:
     container_name: "mongodb"
     image: mongo
+    volumes:
+      - ./db-data/:/data/db
     ports:
       - "27017:27017"
     environment:
       - MONGO_INITDB_ROOT_USERNAME=root
       - MONGO_INITDB_ROOT_PASSWORD=root
-  redis:
-    container_name: "redis"
-    image: redis:3.2
-    ports:
-      - "6379:6379"
-    environment:
-      - REDIS_PASS=redis
+  # redis:
+  #   container_name: "redis"
+  #   image: redis:3.2
+  #   ports:
+  #     - "6379:6379"
+  #   environment:
+  #     - REDIS_PASS=redis
