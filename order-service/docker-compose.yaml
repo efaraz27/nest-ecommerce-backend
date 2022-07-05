@@ -1,0 +1,36 @@
+version: '3.8'
+services:
+  backend:
+    container_name: order-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./db-data:/data/db
+    environment:
+      MONGODB_URI: mongodb://root:root@orderdb:27017/
+    depends_on:
+      - mongodb
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - host.docker.internal:host-gateway
+  mongodb:
+    container_name: "orderdb"
+    image: mongo
+    volumes:
+      - ./db-data/:/data/db
+    ports:
+      - "27018:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=root
+  # redis:
+  #   container_name: "redis"
+  #   image: redis:3.2
+  #   ports:
+  #     - "6379:6379"
+  #   environment:
+  #     - REDIS_PASS=redis

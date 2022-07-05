@@ -1,15 +1,31 @@
 import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
+import OrderRouter from "./routes/Order";
+import { connect } from "mongoose";
 
 dotenv.config();
 
+const MONGODB_URI = process.env.MONGODB_URI;
+try {
+  // Connecting to MongoDB
+  connect(MONGODB_URI ? MONGODB_URI : "");
+} catch (err) {
+  // throw error if connection failed
+  console.error("Error connecting to MongoDB: ", err);
+}
+
 const app: Express = express();
-const port = process.env.PORT;
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req: Request, res: Response) => {
-  res.send("Welcome to order service");
+  res.send("Hello World!");
 });
 
-app.listen(port, () => {
-  console.log(`⚡️[Order Service]: Order Service is listening on port ${port}`);
+const orderRouter = new OrderRouter();
+app.use("/order", orderRouter.routes());
+
+app.listen(5000, () => {
+  console.log("Server started on port 5000");
 });
