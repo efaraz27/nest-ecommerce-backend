@@ -5,6 +5,11 @@ import endpointsConfig from "./endpoints.config";
 import amqp, { Message } from "amqplib/callback_api";
 import Product from "./models/Product";
 import ProductRouter from "./routes/Product";
+import {
+  consumeGetAllProducts,
+  consumeCreateProduct,
+  consumeGetProduct,
+} from "./rabbitmq";
 
 amqp.connect(endpointsConfig.RabbitMQ, (err, conn) => {
   if (err) {
@@ -19,106 +24,13 @@ amqp.connect(endpointsConfig.RabbitMQ, (err, conn) => {
     channel.assertQueue("get_all_products", { durable: false });
     channel.assertQueue("get_product", { durable: false });
     channel.assertQueue("create_product", { durable: false });
-    channel.assertQueue("update_product", { durable: false });
-    channel.assertQueue("delete_product", { durable: false });
 
-    channel.consume("get_all_products", (msg) => {
-      if (msg) {
-        Product.find({}, (err: JSON, products: JSON[]) => {
-          if (err) {
-            console.error("Error getting all products: ", err);
-            return;
-          }
-          channel.sendToQueue(
-            msg.properties.replyTo,
-            Buffer.from(JSON.stringify(products)),
-            {
-              correlationId: msg.properties.correlationId,
-            }
-          );
-          channel.ack(msg);
-        });
-      }
-    });
-    channel.consume("get_product", (msg) => {
-      // msg.content === Buffer(productId)
-      if (msg) {
-        Product.findById(msg.content.toString(), (err: JSON, product: JSON) => {
-          if (err) {
-            console.error("Error getting product: ", err);
-            return;
-          }
-          channel.sendToQueue(
-            msg.properties.replyTo,
-            Buffer.from(JSON.stringify(product)),
-            {
-              correlationId: msg.properties.correlationId,
-            }
-          );
-          channel.ack(msg);
-        });
-      }
-    });
-    channel.consume("create_product", (msg) => {
-      if (msg) {
-        const product = JSON.parse(msg.content.toString());
-        const newProduct = new Product(product);
-        newProduct.save().then(() => {
-          channel.sendToQueue(
-            msg.properties.replyTo,
-            Buffer.from(JSON.stringify(newProduct)),
-            {
-              correlationId: msg.properties.correlationId,
-            }
-          );
-          channel.ack(msg);
-        });
-      }
-    });
-    channel.consume("update_product", (msg) => {
-      if (msg) {
-        const product = JSON.parse(msg.content.toString());
-        Product.findByIdAndUpdate(
-          product._id,
-          product,
-          (err: JSON, product: JSON) => {
-            if (err) {
-              console.error("Error updating product: ", err);
-              return;
-            }
-            channel.sendToQueue(
-              msg.properties.replyTo,
-              Buffer.from(JSON.stringify(product)),
-              {
-                correlationId: msg.properties.correlationId,
-              }
-            );
-            channel.ack(msg);
-          }
-        );
-      }
-    });
-    channel.consume("delete_product", (msg) => {
-      if (msg) {
-        Product.findByIdAndDelete(
-          msg.content.toString(),
-          (err: JSON, product: JSON) => {
-            if (err) {
-              console.error("Error deleting product: ", err);
-              return;
-            }
-            channel.sendToQueue(
-              msg.properties.replyTo,
-              Buffer.from(JSON.stringify(product)),
-              {
-                correlationId: msg.properties.correlationId,
-              }
-            );
-            channel.ack(msg);
-          }
-        );
-      }
-    });
+    // channel.assertQueue("update_product", { durable: false });
+    // channel.assertQueue("delete_product", { durable: false });
+
+    consumeGetAllProducts(channel);
+    consumeGetProduct(channel);
+    consumeCreateProduct(channel);
 
     const app: Application = express();
     dotenv.config();
