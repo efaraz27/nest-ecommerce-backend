@@ -1,5 +1,11 @@
 import Order from "../models/Order";
 import { Request, Response } from "express";
+import axios from "axios";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL;
 
 export default class OrderController {
   public async createOrder(req: Request, res: Response): Promise<Response> {
@@ -21,8 +27,29 @@ export default class OrderController {
     const { id } = req.params;
     try {
       const order = await Order.findById(id);
-      return res.json(order);
+      if (!order) {
+        return res.status(404).json({
+          message: "Order not found",
+        });
+      }
+      const orderDetails = order.toObject();
+      for (const product of orderDetails.products) {
+        const productId = product.product;
+        try {
+          const res = await axios.get(
+            `${PRODUCT_SERVICE_URL}/products/${productId}`
+          );
+          product.product = res.data;
+        } catch (error) {
+          console.log(error);
+        }
+        // const res = await fetch(`${PRODUCT_SERVICE_URL}/${productId}`);
+        // product.product = res.json();
+        // console.log(res.json());
+      }
+      return res.json(orderDetails);
     } catch (error) {
+      console.log(error);
       return res.status(500).json(error);
     }
   }
